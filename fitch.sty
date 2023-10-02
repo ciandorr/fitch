@@ -51,11 +51,52 @@
 
 \NeedsTeXFormat{LaTeX2e}
 \ProvidesPackage{fitch}[2023-09-04 v0.6 Macros for Fitch-style natural deduction]
+\RequirePackage{pgfopts}
 
 {\chardef\x=\catcode`\*
 \catcode`\*=11
 \global\let\nd*astcode\x}
 \catcode`\*=11
+
+% define various dimensions (explained in fitchdoc.tex):
+\newlength{\nd*dim} 
+\newdimen\nd*depthdim
+\newdimen\nd*hsep
+\newdimen\ndindent
+\ndindent=1em
+% user command to redefine dimensions
+\def\nddim#1#2#3#4#5#6#7#8{\nd*depthdim=#3\relax\nd*hsep=#6\relax%
+\def\nd*height{#1}\def\nd*thickness{#8}\def\nd*initheight{#2}%
+\def\nd*indent{#5}\def\nd*labelsep{#4}\def\nd*justsep{#7}}
+% set initial dimensions
+\nddim{4.5ex}{3.5ex}{1.5ex}{1em}{1.6em}{.5em}{2.5em}{.2mm}
+
+%toggle whether the wholeproof has a vertical line
+\newif\ifnd*outerline
+\nd*outerlinetrue
+
+% punctuation between rule name and line references
+
+\def\nd*rulepunct{, }
+
+% symbol for conditional used in \ii and \ie rules
+
+\def\nd*ifsymbol{\Rightarrow}
+
+\pgfkeys{/fitch/.cd,
+    initheight/.store in=\nd*initheight,
+    height/.store in=\nd*height,
+    thickness/.store in=\nd*thickness,
+    indent/.store in=\nd*indent,
+    labelsep/.store in=\nd*labelsep,
+    justsep/.store in=\nd*justsep,
+    depth/.code={\nd*depthdim=#1\relax},
+    hsep/.code={\nd*hsep=#1\relax},
+    outerline/.is if=nd*outerline,
+    rulepunct/.store in=\nd*rulepunct,
+    conditional/.store in=\nd*ifsymbol}
+
+\ProcessPgfOptions{/fitch}
 
 % References
 
@@ -85,21 +126,9 @@
 
 % Layer A
 
-% define various dimensions (explained in fitchdoc.tex):
-\newlength{\nd*dim} 
-\newdimen\nd*depthdim
-\newdimen\nd*hsep
-\newdimen\ndindent
-\ndindent=1em
-% user command to redefine dimensions
-\def\nddim#1#2#3#4#5#6#7#8{\nd*depthdim=#3\relax\nd*hsep=#6\relax%
-\def\nd*height{#1}\def\nd*thickness{#8}\def\nd*initheight{#2}%
-\def\nd*indent{#5}\def\nd*labelsep{#4}\def\nd*justsep{#7}}
-% set initial dimensions
-\nddim{4.5ex}{3.5ex}{1.5ex}{1em}{1.6em}{.5em}{2.5em}{.2mm}
-
 \def\nd*v{\rule[-\nd*depthdim]{\nd*thickness}{\nd*height}}
-\def\nd*t{\rule[-\nd*depthdim]{0mm}{\nd*height}\rule[-\nd*depthdim]{\nd*thickness}{\nd*initheight}}
+\def\nd*h{\rule[-\nd*depthdim]{0mm}{\nd*height}} % strut
+\def\nd*t{\rule[-\nd*depthdim]{\nd*thickness}{\nd*initheight}}
 \def\nd*i{\hspace{\nd*indent}} 
 \def\nd*s{\hspace{\nd*hsep}}
 \def\nd*g#1{\nd*f{\makebox[\nd*indent][c]{$#1$}}}
@@ -125,7 +154,7 @@
 % Layer B
 
 \newcount\nd*n
-\def\nd*beginb{\begingroup\nd*reset\gdef\nd*stack{\nd*nil}\nd*push\nd*stack{\nd*t}%
+\def\nd*beginb{\begingroup\nd*reset\gdef\nd*stack{\nd*nil}\nd*push\nd*stack{\nd*h}\ifnd*outerline\nd*push\nd*stack{\nd*t}\fi
   \begin{array}{l@{\hspace{\nd*labelsep}}l@{\hspace{\nd*justsep}}l}}
 \def\nd*resumeb{\begingroup\begin{array}{l@{\hspace{\nd*labelsep}}l@{\hspace{\nd*justsep}}l}}
 \def\nd*endb{\end{array}\endgroup}
@@ -148,11 +177,7 @@
 \def\nd*havec#1#2{\nd*cmd\nd*sto{\nd*haveb}{#1}{#2}}
 \def\nd*hypocontc#1{\nd*chtyp\nd*cmd\nd*sto{\nd*hypocontb}{}{#1}}
 \def\nd*havecontc#1{\nd*cmd\nd*sto{\nd*havecontb}{}{#1}}
-\def\nd*by#1#2{\ifx\nd*x#2\nd*x\gdef\nd*byt{\mbox{#1}}\else\ifx\nd*x#1\nd*x\gdef\nd*byt{\mbox{\ndref{#2}}}\else\gdef\nd*byt{\mbox{#1\ndrulepunct\ndref{#2}}}\fi\fi}
-
-% user-redefinable punctuation between rule name and line references, by default comma+space
-
-\def\ndrulepunct{, }
+\def\nd*by#1#2{\ifx\nd*x#2\nd*x\gdef\nd*byt{\mbox{#1}}\else\ifx\nd*x#1\nd*x\gdef\nd*byt{\mbox{\ndref{#2}}}\else\gdef\nd*byt{\mbox{#1\nd*rulepunct\ndref{#2}}}\fi\fi}
 
 % multi-line macros
 \def\nd*mhypoc#1#2{\nd*mhypocA{#1}#2\\\nd*stop\\}
@@ -207,8 +232,8 @@
   \let\havecont\nd*havecont%
   \let\by\nd*by%
   \let\guard\nd*guard%
-  \def\ii{\by{$\Rightarrow$I}}%
-  \def\ie{\by{$\Rightarrow$E}}%
+  \def\ii{\by{$\nd*ifsymbol$I}}%
+  \def\ie{\by{$\nd*ifsymbol$E}}%
   \def\Ai{\by{$\forall$I}}%
   \def\Ae{\by{$\forall$E}}%
   \def\Ei{\by{$\exists$I}}%
@@ -226,8 +251,15 @@
   \def\r{\by{R}}%
 }
 
-\newenvironment{nd}{\begingroup\nd*init\nd*beginc}{\nd*endc\endgroup}
-\newenvironment{ndresume}{\begingroup\nd*init\nd*resumec}{\nd*endc\endgroup}
+
+\def\nd*opts{{/fitch/.cd}}
+\newenvironment{nd}[1][]{\gdef\nd*opts{{/fitch/.cd,#1}}%
+\begingroup
+\pgfkeys{/fitch/.cd,#1}%
+\nd*init\nd*beginc}{\nd*endc\endgroup}
+\newenvironment{ndresume}{\begingroup%
+\expandafter\pgfkeys\nd*opts%
+\nd*init\nd*resumec}{\nd*endc\endgroup}
 
 \catcode`\*=\nd*astcode
 
